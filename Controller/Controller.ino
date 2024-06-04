@@ -124,6 +124,28 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-
+  if (control)
+  {
+    control = false;
+    uint8_t *address;
+    hexToArray(address, objControl.address);
+    if (!esp_now_is_peer_exist(address))
+    {
+      esp_now_add_peer(address, ESP_NOW_ROLE_SLAVE, 1, NULL, 0);
+      timeSend = millis();
+      while (!esp_now_is_peer_exist(address))
+      {
+        if (millis() - timeSend >= 5000)
+        {
+          break;
+        }
+      }
+      esp_now_send(address, (uini8_t *)&objControl, sizeof(objControl));
+    }
+    else
+    {
+      esp_now_send(address, (uint8_t *)&objControl, sizeof(objControl));
+    }
+  }
+  delay(10);
 }
