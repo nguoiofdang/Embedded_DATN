@@ -1,19 +1,22 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <espnow.h>
+#include <SD.h>
 #include <Arduino_JSON.h>
-#include <addons/TokenHelper.h>
-#include <addons/RTDBHelper.h>
+#include <ArduinoJson.h>
+#include <Firebase_ESP_Client.h>
+#include "addons/TokenHelper.h"
+#include "addons/RTDBHelper.h"
 
 // Thong tin cua wifi muon truy cap
 #define WIFI_SSID "Tang 2"
 #define WIFI_PASSWORD "12345678"
 
 // Firebase project API Key
-#define API_KEY ""
+#define API_KEY "AIzaSyDjeq8UaaphaMD_RUNITJW4XoNXIKgdoEs"
 
 // RTDB URLefine the DTSB URL
-#define DATABASE_URL ""
+#define DATABASE_URL "https://remote-gh-default-rtdb.asia-southeast1.firebasedatabase.app/"
 
 FirebaseData fbdo;
 FirebaseAuth auth;
@@ -47,7 +50,6 @@ void hexToArray(uint8_t *mac_addr, String hexID)
   sscanf(hexID.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
           mac_addr[0],mac_addr[1],mac_addr[2],
           mac_addr[3],mac_addr[4],mac_addr[5]);
-  *stringID = String(hexID);
 }
 
 String feedback(String address, String node)
@@ -59,7 +61,7 @@ void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus)
 {
 
   String address;
-  arrayToHex(mac_addr, &address)
+  arrayToHex(mac_addr, &address);
 
   if (sendStatus == 0)
   {
@@ -77,8 +79,8 @@ void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus)
 void streamCallback(FirebaseStream data)
 {
 
-  const size_t capacity = JSON_OBJECT_SIZE(2) + 30;
-  DynamicJsonDocument doc(capacity);
+  // const size_t capacity = JSON_OBJECT_SIZE(2) + 30;
+  DynamicJsonDocument doc(100);
   deserializeJson(doc, data.jsonString());
 
   if (doc["address"] == "")
@@ -93,28 +95,33 @@ void streamCallback(FirebaseStream data)
 
 }
 
-void setup() {
-  Serial.begin(115200)
-  Wifi.mode(WIFI_STA);
-  Wifi.begin(WIFI_SSID, WIFI_PASSWORD);
+void streamTimeoutCallback(bool timeout) {
 
-  while(Wifi.status() != WL_CONNECTED) {
+}
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  while(WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
     delay(300);
   }
 
-  config.api_ley = API_KEY;
-  config.database_url = DATABASE_URL
+  config.api_key = API_KEY;
+  config.database_url = DATABASE_URL;
   if (Firebase.signUp(&config, &auth, "", ""))
   {
     Serial.println("Firebase ok");
-    signupOK = true
+    signupOk = true;
   }
+
   config.token_status_callback = tokenStatusCallback;
   Firebase.begin(&config, &auth);
-  Firebase.reconnectWifi(true);
+  Firebase.reconnectWiFi(true);
   Firebase.RTDB.beginStream(&fbdo, "/Control");
-  Firebase.RTDB.setStreamCallback(&fbdo, streamCallback, streamTimeoutCalback);
+  Firebase.RTDB.setStreamCallback(&fbdo, streamCallback, streamTimeoutCallback);
   if (esp_now_init() != 0) {
     Serial.println("Error initializing ESP-NOW");
     return;
@@ -140,7 +147,7 @@ void loop() {
           break;
         }
       }
-      esp_now_send(address, (uini8_t *)&objControl, sizeof(objControl));
+      esp_now_send(address, (uint8_t *)&objControl, sizeof(objControl));
     }
     else
     {
